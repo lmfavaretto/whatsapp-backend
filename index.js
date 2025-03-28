@@ -10,27 +10,32 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-const client = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  }
-});
-
+let client;
 let qrCode = '';
 
-client.on('qr', (qr) => {
-  qrCode = qr;
-  console.log('QR RECEIVED');
-  qrcode.generate(qr, { small: true });
-});
+function startClient() {
+  client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+  });
 
-client.on('ready', () => {
-  console.log('Client is ready!');
-});
+  client.on('qr', (qr) => {
+    qrCode = qr;
+    console.log('QR RECEIVED');
+    qrcode.generate(qr, { small: true });
+  });
 
-client.initialize();
+  client.on('ready', () => {
+    console.log('Client is ready!');
+  });
+
+  client.initialize();
+}
+
+startClient();
 
 // Rota para obter o QR code
 app.get('/qr', (req, res) => {
@@ -64,6 +69,24 @@ app.post('/send', async (req, res) => {
   }
 
   res.json({ status: 'Mensagens enviadas com sucesso' });
+});
+
+// Rota para resetar sessão
+app.get('/reset-session', async (req, res) => {
+  try {
+    await client.destroy();
+    const sessionPath = './.wwebjs_auth';
+
+    if (fs.existsSync(sessionPath)) {
+      fs.rmSync(sessionPath, { recursive: true, force: true });
+    }
+
+    startClient();
+    qrCode = '';
+    res.json({ status: 'Sessão resetada com sucesso' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao resetar sessão', details: err.message });
+  }
 });
 
 app.listen(port, () => {
