@@ -51,7 +51,7 @@ function startClient() {
   client.on('disconnected', (reason) => {
     console.log('Client was logged out', reason);
     qrCode = '';
-    startClient(); // reinicia a sessão
+    startClient();
   });
 
   client.initialize();
@@ -98,22 +98,33 @@ app.post('/send', async (req, res) => {
   res.json({ status: 'Mensagens enviadas com sucesso' });
 });
 
-// Rota para resetar sessão
+// Rota para resetar sessão com delay entre etapas
 app.get('/reset-session', async (req, res) => {
   try {
-    await client.destroy();
-    const sessionPath = './.wwebjs_auth';
+    console.log("Iniciando reset de sessão...");
 
+    await client.destroy();
+    console.log("Client destruído");
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const sessionPath = './.wwebjs_auth';
     if (fs.existsSync(sessionPath)) {
       fs.rmSync(sessionPath, { recursive: true, force: true });
+      console.log("Sessão apagada");
     }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     startClient();
     qrCode = '';
+
     setTimeout(() => {
-    res.json({ status: 'Sessão resetada com sucesso' });
-  }, 3000);
+      console.log("Reset finalizado e novo client iniciado");
+      res.json({ status: 'Sessão resetada com sucesso' });
+    }, 2000);
   } catch (err) {
+    console.error("Erro ao resetar sessão:", err.message);
     res.status(500).json({ error: 'Erro ao resetar sessão', details: err.message });
   }
 });
