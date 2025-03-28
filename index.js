@@ -4,6 +4,14 @@ const qrcode = require('qrcode-terminal');
 const fs = require('fs');
 const cors = require('cors');
 
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('Unhandled Rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.log('Uncaught Exception:', err);
+});
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -40,10 +48,21 @@ function startClient() {
     console.log('Client is ready!');
   });
 
+  client.on('disconnected', (reason) => {
+    console.log('Client was logged out', reason);
+    qrCode = '';
+    startClient(); // reinicia a sessão
+  });
+
   client.initialize();
 }
 
 startClient();
+
+// Keep-alive ping
+setInterval(() => {
+  console.log('Ping to keep Railway alive');
+}, 10000);
 
 // Rota para obter o QR code
 app.get('/qr', (req, res) => {
