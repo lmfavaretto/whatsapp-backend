@@ -98,13 +98,17 @@ app.post('/send', async (req, res) => {
   res.json({ status: 'Mensagens enviadas com sucesso' });
 });
 
-// Rota para resetar sessão com delay entre etapas
+// Rota para resetar sessão com validação
 app.get('/reset-session', async (req, res) => {
   try {
     console.log("Iniciando reset de sessão...");
 
-    await client.destroy();
-    console.log("Client destruído");
+    if (client) {
+      await client.destroy();
+      console.log("Client destruído");
+    } else {
+      console.log("Client não estava inicializado");
+    }
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
