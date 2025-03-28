@@ -110,7 +110,9 @@ app.get('/reset-session', async (req, res) => {
 
     startClient();
     qrCode = '';
+    setTimeout(() => {
     res.json({ status: 'Sessão resetada com sucesso' });
+  }, 3000);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao resetar sessão', details: err.message });
   }
