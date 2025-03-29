@@ -70,6 +70,7 @@ setInterval(() => {
 
 app.get('/qr', (req, res) => {
   if (isLoggedIn) return res.json({ status: 'already_connected' });
+  if (!qrCode) return res.json({ status: 'pending' });
   res.json({ qr: qrCode });
 });
 
