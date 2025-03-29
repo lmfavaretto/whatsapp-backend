@@ -18,10 +18,11 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-let client;
+let client = null;
 let qrCode = '';
 
 function startClient() {
+  console.log("🔄 Iniciando nova instância do client...");
   client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -40,16 +41,16 @@ function startClient() {
 
   client.on('qr', (qr) => {
     qrCode = qr;
-    console.log('QR RECEIVED');
+    console.log('📸 QR RECEIVED');
     qrcode.generate(qr, { small: true });
   });
 
   client.on('ready', () => {
-    console.log('Client is ready!');
+    console.log('✅ Client is ready!');
   });
 
   client.on('disconnected', (reason) => {
-    console.log('Client was logged out', reason);
+    console.log('⚠️ Client was logged out', reason);
     qrCode = '';
     startClient();
   });
@@ -61,7 +62,7 @@ startClient();
 
 // Keep-alive ping
 setInterval(() => {
-  console.log('Ping to keep Railway alive');
+  console.log('🔁 Ping to keep Railway alive');
 }, 10000);
 
 // Rota para obter o QR code
@@ -74,7 +75,7 @@ app.get('/qr', (req, res) => {
 app.post('/send', async (req, res) => {
   const { contatos, mensagem, delay } = req.body;
 
-  if (!client.info || !client.info.wid) {
+  if (!client || !client.info || !client.info.wid) {
     return res.status(400).json({ error: 'WhatsApp not connected' });
   }
 
@@ -85,9 +86,9 @@ app.post('/send', async (req, res) => {
 
     try {
       await client.sendMessage(numero, texto);
-      console.log(`Mensagem enviada para ${nome}`);
+      console.log(`📨 Mensagem enviada para ${nome}`);
     } catch (err) {
-      console.log(`Erro ao enviar para ${nome}:`, err.message);
+      console.log(`❌ Erro ao enviar para ${nome}:`, err.message);
     }
 
     if (i < contatos.length - 1) {
@@ -98,24 +99,28 @@ app.post('/send', async (req, res) => {
   res.json({ status: 'Mensagens enviadas com sucesso' });
 });
 
-// Rota para resetar sessão com validação
+// Rota para resetar sessão com verificação extra
 app.get('/reset-session', async (req, res) => {
   try {
-    console.log("Iniciando reset de sessão...");
+    console.log("🚨 Iniciando reset de sessão...");
 
     if (client) {
-      await client.destroy();
-      console.log("Client destruído");
-    } else {
-      console.log("Client não estava inicializado");
+      try {
+        await client.destroy();
+        console.log("☠️ Client destruído");
+      } catch (destroyErr) {
+        console.log("⚠️ Erro ao destruir client:", destroyErr.message);
+      }
     }
+
+    client = null;
 
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const sessionPath = './.wwebjs_auth';
     if (fs.existsSync(sessionPath)) {
       fs.rmSync(sessionPath, { recursive: true, force: true });
-      console.log("Sessão apagada");
+      console.log("🗑️ Sessão deletada com sucesso");
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -124,15 +129,15 @@ app.get('/reset-session', async (req, res) => {
     qrCode = '';
 
     setTimeout(() => {
-      console.log("Reset finalizado e novo client iniciado");
+      console.log("🚀 Reset finalizado com novo client");
       res.json({ status: 'Sessão resetada com sucesso' });
     }, 2000);
   } catch (err) {
-    console.error("Erro ao resetar sessão:", err.message);
+    console.error("❌ Erro ao resetar sessão:", err.message);
     res.status(500).json({ error: 'Erro ao resetar sessão', details: err.message });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Servidor rodando na porta ${port}`);
+  console.log(`🟢 Servidor rodando na porta ${port}`);
 });
