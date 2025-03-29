@@ -20,6 +20,7 @@ app.use(express.json());
 
 let client = null;
 let qrCode = '';
+let isLoggedIn = false;
 
 function startClient() {
   console.log("🔄 Iniciando nova instância do client...");
@@ -41,17 +42,20 @@ function startClient() {
 
   client.on('qr', (qr) => {
     qrCode = qr;
+    isLoggedIn = false;
     console.log('📸 QR RECEIVED');
     qrcode.generate(qr, { small: true });
   });
 
   client.on('ready', () => {
+    isLoggedIn = true;
     console.log('✅ Client is ready!');
   });
 
   client.on('disconnected', (reason) => {
     console.log('⚠️ Client was logged out', reason);
     qrCode = '';
+    isLoggedIn = false;
     startClient();
   });
 
@@ -60,18 +64,15 @@ function startClient() {
 
 startClient();
 
-// Keep-alive ping
 setInterval(() => {
   console.log('🔁 Ping to keep Railway alive');
 }, 10000);
 
-// Rota para obter o QR code
 app.get('/qr', (req, res) => {
-  if (!qrCode) return res.json({ status: 'already_connected' });
+  if (isLoggedIn) return res.json({ status: 'already_connected' });
   res.json({ qr: qrCode });
 });
 
-// Rota para disparar mensagens
 app.post('/send', async (req, res) => {
   const { contatos, mensagem, delay } = req.body;
 
@@ -99,7 +100,6 @@ app.post('/send', async (req, res) => {
   res.json({ status: 'Mensagens enviadas com sucesso' });
 });
 
-// Rota para resetar sessão com verificação extra
 app.get('/reset-session', async (req, res) => {
   try {
     console.log("🚨 Iniciando reset de sessão...");
@@ -114,7 +114,7 @@ app.get('/reset-session', async (req, res) => {
     }
 
     client = null;
-
+    isLoggedIn = false;
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const sessionPath = './.wwebjs_auth';
@@ -124,7 +124,6 @@ app.get('/reset-session', async (req, res) => {
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000));
-
     startClient();
     qrCode = '';
 
